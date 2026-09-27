@@ -1,7 +1,7 @@
-# 회의록 작업실 0.1 prototype
+# 회의록 작업실 0.2 experimental
 
-This Android source supports microphone recording while the app is open, manual speaker/utterance entry, XLSX generation, and sharing to a recipient-prefilled email app. Sending requires the user to confirm in the email app and requires internet.
+This Android source records 16 kHz mono WAV, runs offline sherpa-onnx speaker diarization and Korean SenseVoice ASR after recording, produces an XLSX, and opens an email app with the recipient prefilled. Sending requires user confirmation and internet. Speaker numbers are anonymous, and the transcription must be reviewed.
 
-**Incomplete:** Korean speech recognition, automatic speaker diarization, long-running background recording, transcription review, automatic email sending. This build does not satisfy the full requested feature set. Open in Android Studio (SDK 35), run `:app:assembleDebug`. An APK has not been built or tested here.
+**Limits:** recording and processing require the app to remain open; one recording is limited to 20 minutes; no background service, per-line edit UI or automatic email sending. Speaker IDs may be wrong or inconsistent. A 1-hour meeting and on-device speed/accuracy have not been validated. An APK is only distributable if GitHub Actions succeeds; device testing is still required.
 
-Next: integrate the official sherpa-onnx Android diarization example and Korean ASR models, align diarization segments with text, provide correction UI, then benchmark with an actual 15-minute meeting. Reference: https://k2-fsa.github.io/sherpa/onnx/speaker-diarization/android.html
+The GitHub workflow downloads pinned v1.13.8 Android AAR plus official pyannote segmentation, 3D-Speaker embedding, and Korean-capable SenseVoice int8 model. Large binaries are excluded from git. Run the workflow before attempting a local Gradle build, or populate the same app/libs and assets paths locally. Reference: https://k2-fsa.github.io/sherpa/onnx/speaker-diarization/android.html
