@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Patterns
 import android.widget.*
@@ -15,7 +14,8 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 class MainActivity : Activity() {
-    private var recorder: MediaRecorder? = null
+    private var recorder: WavRecorder? = null
+    private var recordingFile: File? = null
     private val rows = mutableListOf<Pair<String, String>>()
     private lateinit var speaker: EditText
     private lateinit var words: EditText
@@ -26,10 +26,11 @@ class MainActivity : Activity() {
         val column = LinearLayout(this).apply { orientation = 1; setPadding(28,28,28,28) }
         setContentView(ScrollView(this).apply { addView(column) })
         column.addView(TextView(this).apply { text = "회의록 작업실 0.1"; textSize = 26f })
-        column.addView(TextView(this).apply { text = "녹음 후 화자와 발언을 직접 입력합니다. 자동 분석은 아직 제공되지 않습니다." })
+        column.addView(TextView(this).apply { text = "녹음 종료 후 자동 분석을 누르세요. 화자 번호와 인식 내용을 확인하고 엑셀로 공유하세요. 20분 이하만 분석합니다." })
         fun button(label: String, action: () -> Unit) { column.addView(Button(this).apply { text = label; setOnClickListener { action() } }) }
         fun input(hintText: String) = EditText(this).also { it.hint = hintText; column.addView(it) }
         button("녹음 시작") { start() }; button("녹음 종료") { stop() }
+        button("자동 분석 시작") { analyzeRecording() }
         speaker = input("화자"); words = input("발언 내용")
         log = TextView(this).also { column.addView(it) }
         button("발언 추가") { if (speaker.text.isNotBlank() && words.text.isNotBlank()) { rows.add(speaker.text.toString() to words.text.toString()); log.text = rows.joinToString("\n") { "${it.first}: ${it.second}" }; words.text.clear() } }
@@ -40,18 +41,33 @@ class MainActivity : Activity() {
         if (recorder != null) return
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) { requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), 1); return }
         try {
-            val file = File(filesDir, "meeting_${System.currentTimeMillis()}.m4a")
-            @Suppress("DEPRECATION") val r = MediaRecorder()
-            recorder = r
-            r.setAudioSource(MediaRecorder.AudioSource.MIC); r.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            r.setAudioEncoder(MediaRecorder.AudioEncoder.AAC); r.setOutputFile(file.absolutePath)
-            r.prepare(); r.start(); toast("녹음 중: ${file.name}")
-        } catch (e: Exception) { recorder?.release(); recorder = null; toast("녹음 실패: ${e.message}") }
+            val file = File(filesDir, "meeting_${System.currentTimeMillis()}.wav")
+            val r = WavRecorder(file); r.start(); recorder = r; recordingFile = file
+            toast("녹음 중: ${file.name}")
+        } catch (e: Exception) { recorder = null; toast("녹음 실패: ${e.message}") }
     }
     private fun stop() {
         val r = recorder ?: return
         try { r.stop(); toast("녹음 저장됨") } catch (e: Exception) { toast("저장 실패: ${e.message}") }
-        finally { r.release(); recorder = null }
+        finally { recorder = null }
+    }
+    private fun analyzeRecording() {
+        if (recorder != null) { toast("녹음을 먼저 종료하세요"); return }
+        val file = recordingFile ?: run { toast("녹음 파일이 없습니다"); return }
+        log.text = "분석 중… 앱을 화면에 유지하세요"
+        Thread {
+            try {
+                val result = OfflineMeetingAnalyzer.analyze(this, file) { percent ->
+                    runOnUiThread { log.text = "분석 중 $percent%" }
+                }
+                runOnUiThread {
+                    rows.clear()
+                    rows.addAll(result.map { "화자 ${it.speaker + 1} (${"%.1f".format(it.start)}초)" to it.text })
+                    log.text = rows.joinToString("\n") { "${it.first}: ${it.second}" }
+                    toast("자동 분석 완료. 엑셀 공유 전 내용을 확인하세요")
+                }
+            } catch (e: Exception) { runOnUiThread { log.text = "분석 실패: ${e.message}" } }
+        }.start()
     }
     private fun send() {
         val email = address.text.toString().trim()
