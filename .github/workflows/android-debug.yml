@@ -46,6 +46,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create v0.2.1 app/build/outputs/apk/debug/app-debug.apk \
-            --prerelease --title 'Meeting Recorder 0.2.1 (test APK)' \
-            --notes 'Offline Korean speech recognition and speaker diarization test build. Supports recordings up to 20 minutes. Device accuracy and stability remain unverified.'
+          gh release create v0.3.0 app/build/outputs/apk/debug/app-debug.apk \
+            --prerelease --title 'Meeting Recorder 0.3.0 (test APK)' \
+            --notes 'Updated meeting editor UI and selectable XLSX or TXT email sharing. Offline analysis supports recordings up to 20 minutes.'
