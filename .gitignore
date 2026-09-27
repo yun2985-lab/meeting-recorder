@@ -1,0 +1,6 @@
+.gradle/
+build/
+app/build/
+app/libs/*.aar
+app/src/main/assets/*.onnx
+app/src/main/assets/tokens.txt
