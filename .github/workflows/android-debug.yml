@@ -19,6 +19,21 @@ jobs:
         with:
           gradle-version: '8.9'
       - run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Fetch pinned sherpa-onnx runtime and offline models
+        run: |
+          set -euo pipefail
+          mkdir -p app/libs app/src/main/assets /tmp/meeting-models
+          curl -fL --retry 3 -o app/libs/sherpa-onnx.aar https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.8/sherpa-onnx-1.13.8.aar
+          curl -fL --retry 3 -o /tmp/meeting-models/seg.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2
+          tar -xjf /tmp/meeting-models/seg.tar.bz2 -C /tmp/meeting-models
+          cp /tmp/meeting-models/sherpa-onnx-pyannote-segmentation-3-0/model.onnx app/src/main/assets/segmentation.onnx
+          curl -fL --retry 3 -o app/src/main/assets/embedding.onnx https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx
+          curl -fL --retry 3 -o /tmp/meeting-models/asr.tar.bz2 https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17.tar.bz2
+          tar -xjf /tmp/meeting-models/asr.tar.bz2 -C /tmp/meeting-models
+          cp /tmp/meeting-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/model.int8.onnx app/src/main/assets/
+          cp /tmp/meeting-models/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-int8-2024-07-17/tokens.txt app/src/main/assets/
+          test -s app/libs/sherpa-onnx.aar
+          for model in segmentation.onnx embedding.onnx model.int8.onnx tokens.txt; do test -s "app/src/main/assets/$model"; done
       - run: gradle :app:assembleDebug --no-daemon
       - uses: actions/upload-artifact@v4
         with:
